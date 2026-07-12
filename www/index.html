@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>听歌跑酷 · Whistle Runner</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a0a2a;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;
+  font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+canvas{display:block;position:absolute;top:0;left:0;width:100%;height:100%}
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
+  padding:8px 12px;pointer-events:none;z-index:10;color:#c0a0e0}
+#hud .h{font-size:10px;opacity:.7}#hud .v{font-size:22px;font-weight:900}
+#song-label{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:12px;color:#8060a0;z-index:10;pointer-events:none}
+#pitch-indicator{position:absolute;right:10px;top:40%;transform:translateY(-50%);width:8px;height:40%;
+  background:linear-gradient(180deg,#80ff80,#ffff40,#ff8040);border-radius:4px;z-index:10;pointer-events:none}
+#pitch-dot{position:absolute;right:6px;width:12px;height:12px;border-radius:50%;background:#fff;z-index:10;pointer-events:none;transition:top .15s}
+#start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;z-index:30;background:rgba(20,8,35,.95);color:#c0a0e0}
+#start h1{font-size:clamp(28px,8vw,52px);font-weight:900;
+  background:linear-gradient(180deg,#a060e0,#6040a0,#a060e0);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+#start .sub{font-size:13px;opacity:.7;margin-bottom:16px}
+#start button{background:linear-gradient(135deg,#8040c0,#6020a0);border:none;color:#fff;
+  font-size:18px;font-weight:700;padding:12px 40px;border-radius:28px;cursor:pointer;margin:6px}
+#start button:active{transform:scale(.95)}
+#song-picker{display:flex;flex-wrap:wrap;gap:6px;max-width:380px;justify-content:center;margin-bottom:12px}
+.spb{background:#201035;border:1px solid#403060;border-radius:8px;padding:6px 12px;color:#b090d0;font-size:11px;cursor:pointer}
+.spb:active{border-color:#8060c0;background:#301a50}
+#result{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;
+  justify-content:center;z-index:30;background:rgba(20,8,35,.96);color:#c0a0e0}
+#result.show{display:flex}#result h2{font-size:32px;font-weight:900;color:#a060e0;margin-bottom:8px}
+#rs{display:flex;gap:20px;margin:10px 0}.rsv{font-size:24px;font-weight:900;color:#d0b0f0}.rsl{font-size:10px;opacity:.6}
+#result button{background:linear-gradient(135deg,#8040c0,#6020a0);border:none;color:#fff;
+  font-size:16px;font-weight:700;padding:10px 32px;border-radius:24px;cursor:pointer;margin-top:8px}
+#mic-prompt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;z-index:40;background:rgba(20,8,35,.98);color:#c0a0e0;font-size:15px}
+#mic-prompt button{background:linear-gradient(135deg,#8040c0,#6020a0);border:none;color:#fff;
+  font-size:18px;font-weight:700;padding:12px 36px;border-radius:28px;cursor:pointer;margin-top:12px}
+@media(max-width:400px) and (max-height:320px),(max-width:320px) and (max-height:400px){
+  html{font-size:11px}#hud .v{font-size:16px}#start h1{font-size:20px}
+  #song-picker{gap:4px}.spb{font-size:9px;padding:4px 8px}#result h2{font-size:24px}.rsv{font-size:18px}
+}
+/* ===== WATCH MODE (<=280px width or <=300px height) ===== */
+@media(max-width:280px),(max-height:300px){
+  html{font-size:9px}#hud .v{font-size:12px}#hud .h{font-size:7px}
+  #start h1{font-size:16px}#start .sub{font-size:9px}
+  #start button{font-size:12px;padding:8px 20px}
+  #song-picker{gap:3px}.spb{font-size:7px;padding:3px 6px}
+  #result h2{font-size:18px}.rsv{font-size:14px}.rsl{font-size:7px}
+  #result button{font-size:11px;padding:6px 18px}
+  #song-label{font-size:9px}#pitch-indicator{width:5px}
+  #pitch-dot{width:8px;height:8px}
+   #mic-prompt{font-size:11px}#mic-prompt button{font-size:12px;padding:8px 20px}
+}
+/* ===== GLASSES MODE (≤420×340 or ≤340×420) ===== */
+@media(max-width:420px) and (max-height:340px),(max-width:340px) and (max-height:420px){
+  html{font-size:10px}#hud .v{font-size:14px}#hud .h{font-size:7px}
+  #start h1{font-size:18px}#start .sub{font-size:9px}
+  #start button{font-size:13px;padding:8px 24px}
+  #song-picker{gap:3px}.spb{font-size:8px;padding:4px 7px}
+  #result h2{font-size:20px}.rsv{font-size:16px}.rsl{font-size:8px}
+  #result button{font-size:12px;padding:7px 20px}
+  #song-label{font-size:10px}#pitch-indicator{width:6px}
+  #pitch-dot{width:10px;height:10px}
+  #mic-prompt{font-size:12px}#mic-prompt button{font-size:13px;padding:9px 24px}
+  #ring-status{font-size:.5rem;top:1.8rem}#cane-status{font-size:.5rem;top:3.2rem}
+}
+/* ===== VOICE DOT ===== */
+#voice-dot{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:#00ff66;z-index:50;display:none}
+#voice-dot.active{display:block;animation:voice-pulse .8s ease-in-out infinite}
+@keyframes voice-pulse{0%,100%{opacity:.3;box-shadow:0 0 4px #00ff66}50%{opacity:1;box-shadow:0 0 14px #00ff66,0 0 28px #00ff6688}}
+/* ===== RING & CANE BADGES ===== */
+#ring-status{position:fixed;top:2.2rem;right:.5rem;font-size:.6rem;padding:.15rem .4rem;border-radius:2rem;z-index:50;display:none;background:#201035;color:#6b5a80;border:1px solid #403060}
+#ring-status.active{display:flex;align-items:center;gap:.2rem;background:#1a2a3a;color:#60a5fa;border:1px solid #60a5fa}
+#cane-status{position:fixed;top:3.8rem;right:.5rem;font-size:.6rem;padding:.15rem .4rem;border-radius:2rem;z-index:50;display:none;background:#201035;color:#6b5a80;border:1px solid #403060}
+#cane-status.active{display:flex;align-items:center;gap:.2rem;background:#2a1a3a;color:#c084fc;border:1px solid #c084fc}
+</style>
+</head>
+<body>
+<div id="mic-prompt"><div>🎵</div><div style="margin-top:8px">需要麦克风来听你吹口哨</div><button onclick="reqMic()">允许麦克风</button></div>
+<div id="start" style="display:none">
+  <h1>听歌跑酷</h1>
+  <p class="sub">—— 吹口哨控制跑酷 ——</p>
+  <div id="song-picker"></div>
+  <button onclick="startGame()">▶ 开始跑酷</button>
+  <p style="font-size:10px;opacity:.5;margin-top:8px">高音=跳 低音=蹲 节奏=加速</p>
+</div>
+<div id="hud" style="display:none">
+  <div><div class="h">距离</div><div class="v" id="dist">0m</div></div>
+  <div style="text-align:center"><div class="h">金币</div><div class="v" id="coins">0</div></div>
+  <div style="text-align:right"><div class="h">得分</div><div class="v" id="scores">0</div></div>
+</div>
+<div id="song-label"></div>
+<div id="pitch-indicator"></div>
+<div id="pitch-dot"></div>
+<div id="ring-status"></div>
+<div id="cane-status"></div>
+<div id="result"><h2>跑酷结束</h2><div id="rs"></div><button onclick="restart()">再来一局</button></div>
+<div id="voice-dot"></div>
+<canvas id="game"></canvas>
+
+<script>
+// ==================== AUDIO ====================
+let aCtx,analyser,micStream;
+async function reqMic(){try{aCtx=new(window.AudioContext||window.webkitAudioContext)();
+  micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+  const src=aCtx.createMediaStreamSource(micStream);analyser=aCtx.createAnalyser();
+  analyser.fftSize=2048;analyser.smoothingTimeConstant=.3;src.connect(analyser);
+  document.getElementById("mic-prompt").style.display="none";document.getElementById("start").style.display="flex";
+  buildSongPicker()}catch(e){document.getElementById("mic-prompt").innerHTML='<div>❌</div><div>麦克风不可用</div><button onclick="reqMic()">重试</button>'}}
+
+function getPitch(){const b=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(b);
+  let bo=-1,bc=-1;for(let o=20;o<b.length/2;o++){let c=0;for(let i=0;i<b.length-o;i++)c+=b[i]*b[i+o];if(c>bc){bc=c;bo=o}}
+  return bc<.01||bo<15?0:aCtx.sampleRate/bo}
+
+// ==================== SONGS ====================
+const SONGS=[
+  {title:"啊朋友再见",bpm:120,notes:[64,64,65,67,67,65,64,62,60,60,62,64,64,62,62]},
+  {title:"Edelweiss",bpm:108,notes:[64,65,67,67,65,67,69,67,65,64,65,67,64,62,60,62,64]},
+  {title:"教父主题",bpm:100,notes:[64,64,65,67,64,62,60,62,64,60,62,64,62,60,57,60,62]},
+  {title:"荒野大镖客",bpm:140,notes:[67,64,67,64,67,69,67,65,64,62,64,65,64,62,60]},
+  {title:"Wind of Change",bpm:124,notes:[64,67,67,65,64,62,64,65,67,65,64,62,60,62,64,64]},
+  {title:"Patience",bpm:115,notes:[62,64,65,67,64,62,60,62,64,65,64,62,60,62,64,65,67]},
+  {title:"莫斯科郊外的晚上",bpm:110,notes:[60,62,64,65,67,65,64,62,60,62,64,62,60]},
+  {title:"Young Folks",bpm:130,notes:[64,62,64,65,64,62,64,65,67,65,64,62,60,62,64,62,60]},
+  {title:"Colonel Bogey",bpm:120,notes:[64,65,67,64,62,64,65,64,60,62,64,62,60,62,64,65,67,64]},
+  {title:"500 Miles",bpm:112,notes:[60,62,64,65,67,65,64,62,64,65,64,62,60,62,64,62,60]},
+  {title:"Scarborough Fair",bpm:105,notes:[64,62,60,62,64,65,67,64,62,60,62,64,62,60]},
+  {title:"Careless Whisper",bpm:128,notes:[64,65,67,67,65,67,69,67,65,64,62,64,65,67,65,64]},
+  {title:"My Heart Will Go On",bpm:100,notes:[64,65,67,69,67,65,64,62,64,65,67,64,62,60,62,64]},
+  {title:"Yesterday",bpm:96,notes:[64,65,67,65,64,62,60,62,64,62,60,62,64,65,67]},
+  {title:"Stand By Me",bpm:118,notes:[60,62,64,62,60,62,64,65,64,62,60,62,64,62,60]},
+  {title:"Can't Help Falling",bpm:102,notes:[64,65,67,64,62,64,65,64,60,62,64,62,60,62,64,65,67]},
+  {title:"Imagine",bpm:112,notes:[64,65,64,62,60,62,64,65,64,62,60,62,64,62,60]},
+  {title:"What a Wonderful World",bpm:98,notes:[64,64,65,64,62,64,65,67,65,64,62,60,62,64,64]},
+  {title:"Unchained Melody",bpm:106,notes:[64,65,67,69,67,65,64,62,64,65,67,64,62,60,62,64,65]},
+  {title:"Perfect",bpm:128,notes:[64,62,64,65,67,65,64,62,60,62,64,62,60,62,64,65,67,64]},
+];
+let curSong=SONGS[0],songIdx=0,beatIdx=0,lastHitTime=0;
+
+// ==================== GAME STATE ====================
+let gameState="idle",score=0,coins=0,distance=0,speed=4,playerY=0,targetY=0;
+let obsts=[],coinObjs=[],particles=[],animId=null,lastTime=0;
+const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
+let W,H,groundY,speedBase=4;
+
+function resize(){canvas.width=W=window.innerWidth;canvas.height=H=window.innerHeight;groundY=H*.75}
+window.addEventListener("resize",resize);resize();
+
+// ==================== GAME OBJECTS ====================
+function spawnObst(){obsts.push({x:W+R(50,150),y:groundY-40,w:R(20,40),h:R(30,50),active:true})}
+function spawnCoin(){coinObjs.push({x:W+R(30,100),y:groundY-R(50,120),r:8,collected:false})}
+function R(a,b){return a+Math.random()*(b-a)}
+
+// ==================== GAME LOOP ====================
+function startGame(){document.getElementById("start").style.display="none";document.getElementById("hud").style.display="flex";
+  document.getElementById("song-label").textContent="🎵 "+curSong.title;document.getElementById("pitch-indicator").style.display="block";
+  document.getElementById("pitch-dot").style.display="block";document.getElementById("result").classList.remove("show");
+  score=0;coins=0;distance=0;speed=speedBase;playerY=groundY-30;targetY=playerY;beatIdx=0;lastHitTime=0;
+  obsts=[];coinObjs=[];particles=[];gameState="playing";lastTime=performance.now();loop(lastTime)}
+
+function restart(){gameState="idle";if(animId)cancelAnimationFrame(animId);
+  document.getElementById("start").style.display="flex";document.getElementById("hud").style.display="none";
+  document.getElementById("pitch-indicator").style.display="none";document.getElementById("pitch-dot").style.display="none";
+  document.getElementById("result").classList.remove("show")}
+
+function loop(now){if(gameState!=="playing")return;
+  const dt=Math.min((now-lastTime)/1000,.1);lastTime=now;
+  // Pitch → target Y
+  const freq=getPitch();const dot=document.getElementById("pitch-dot");
+  if(freq>200){const pct=Math.min(1,Math.max(0,(freq-200)/800));
+    dot.style.top=(70-pct*60)+"%";targetY=groundY-30-pct*120}
+  else{dot.style.top="80%";targetY=groundY-30}
+  playerY+=(targetY-playerY)*8*dt;
+  // Speed based on beat accuracy
+  const beatInt=60/curSong.bpm;const beatTime=beatIdx*beatInt;
+  if(beatIdx<curSong.notes.length&&performance.now()/1000-lastHitTime>beatInt*.8){
+    speed=speedBase+((freq>200)?2:0);beatIdx++;lastHitTime=performance.now()/1000}
+  else{speed-=.5*dt}
+  speed=Math.max(2,Math.min(speed,10));
+  // Distance
+  distance+=speed*dt*3;
+  // Spawn
+  if(Math.random()<dt*1.5)spawnObst();if(Math.random()<dt*2)spawnCoin();
+  // Move objects
+  for(const o of obsts)o.x-=speed*dt*100;
+  for(const c of coinObjs){c.x-=speed*dt*100;if(c.x<-20&&!c.collected){c.collected=true}}
+  // Collision
+  const px=W*.15,py=playerY,pr=18;
+  for(const o of obsts){if(!o.active||o.x<-50)continue;
+    if(px+pr>o.x&&px-pr<o.x+o.w&&py+pr>o.y&&py-pr<o.y+o.h){o.active=false;score-=5;particles.push({x:o.x,y:o.y,l:.3})}}
+  for(const c of coinObjs){if(c.collected)continue;const dx=px-c.x,dy=py-c.y;
+    if(dx*dx+dy*dy<(pr+c.r)*(pr+c.r)){c.collected=true;coins++;score+=10;particles.push({x:c.x,y:c.y,l:.5})}}
+  // Cleanup
+  obsts=obsts.filter(o=>o.x>-50&&o.active);coinObjs=coinObjs.filter(c=>c.x>-50||!c.collected);
+  // Particles
+  particles=particles.filter(p=>(p.l-=dt)>0);
+  // Song progress
+  if(beatIdx>=curSong.notes.length){beatIdx=0}
+  // HUD
+  document.getElementById("dist").textContent=Math.round(distance)+"m";
+  document.getElementById("coins").textContent=coins;document.getElementById("scores").textContent=score;
+  // Dead?
+  if(score<-20){endGame()}render();animId=requestAnimationFrame(loop)}
+
+function endGame(){gameState="ended";document.getElementById("hud").style.display="none";
+  document.getElementById("pitch-indicator").style.display="none";document.getElementById("pitch-dot").style.display="none";
+  const rs=document.getElementById("result");rs.classList.add("show");rs.querySelector("#rs").innerHTML=
+    `<div class="rs"><div class="rsv">${Math.round(distance)}m</div><div class="rsl">距离</div></div><div class="rs"><div class="rsv">${coins}</div><div class="rsl">金币</div></div><div class="rs"><div class="rsv">${score}</div><div class="rsl">得分</div></div>`}
+
+// ==================== RENDER ====================
+function render(){ctx.clearRect(0,0,W,H);
+  // Sky gradient
+  const sky=ctx.createLinearGradient(0,0,0,groundY);sky.addColorStop(0,"#1a0a2a");sky.addColorStop(.6,"#2a1050");sky.addColorStop(1,"#3a1860");
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,groundY);
+  // Stars
+  ctx.fillStyle="#ffffff44";for(let i=0;i<30;i++){const sx=(i*137+distance*2)%W,sy=(i*73)%(groundY*.6);ctx.beginPath();ctx.arc(sx,sy,1.5,0,Math.PI*2);ctx.fill()}
+  // Ground
+  ctx.fillStyle="#200830";ctx.fillRect(0,groundY,W,H-groundY);
+  ctx.strokeStyle="#402060";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,groundY);ctx.lineTo(W,groundY);ctx.stroke();
+  // Ground lines
+  ctx.strokeStyle="#302050";ctx.lineWidth=1;let lx=(-distance*20%60);while(lx<W){ctx.beginPath();ctx.moveTo(lx,groundY+10);ctx.lineTo(lx+30,groundY+10);ctx.stroke();lx+=60}
+  // Obstacles
+  for(const o of obsts){if(o.x<-50||!o.active)continue;
+    ctx.fillStyle="#603080";ctx.fillRect(o.x,o.y,o.w,o.h);
+    ctx.strokeStyle="#8050a0";ctx.strokeRect(o.x,o.y,o.w,o.h)}
+  // Coins
+  for(const c of coinObjs){if(c.collected||c.x<-20)continue;
+    ctx.fillStyle="#ffd040";ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#ffe080";ctx.beginPath();ctx.arc(c.x-2,c.y-2,c.r*.4,0,Math.PI*2);ctx.fill()}
+  // Particles
+  for(const p of particles){ctx.fillStyle=`rgba(255,200,80,${p.l*2})`;ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill()}
+  // Player
+  const px=W*.15,py=playerY;
+  ctx.fillStyle="#d0a0ff";ctx.beginPath();ctx.arc(px,py-15,12,0,Math.PI*2);ctx.fill(); // head
+  ctx.fillStyle="#b080e0";ctx.fillRect(px-8,py-3,16,20); // body
+  ctx.fillStyle="#9060c0";ctx.fillRect(px-8,py+17,7,12);ctx.fillRect(px+1,py+17,7,12); // legs
+  ctx.fillStyle="#d0a0ff";ctx.beginPath();ctx.arc(px-14,py+8,5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(px+14,py+8,5,0,Math.PI*2);ctx.fill(); // fists
+  // Face
+  ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(px-4,py-17,3,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(px+4,py-17,3,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#1a0a2a";ctx.beginPath();ctx.arc(px-4,py-17,1.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(px+4,py-17,1.5,0,Math.PI*2);ctx.fill();
+}
+
+function buildSongPicker(){const d=document.getElementById("song-picker");d.innerHTML="";
+  SONGS.forEach((s,i)=>{const b=document.createElement("button");b.className="spb";b.textContent=s.title;
+    b.onclick=()=>{curSong=s;songIdx=i;document.querySelectorAll(".spb").forEach(x=>x.style.borderColor="#403060");b.style.borderColor="#8060c0"};d.appendChild(b)})}
+
+// ==================== SMART RING (DeviceOrientation) ====================
+let ringActive=false,ringFrame=0,ringPrevBeta=null,ringPrevGamma=null,sprintTimer=0;
+function setupRing(){
+  if(typeof DeviceOrientationEvent==='undefined')return;
+  const b=document.getElementById('ring-status');
+  if(typeof DeviceOrientationEvent.requestPermission==='function'){
+    b.style.display='flex';b.textContent='💍 点击启用';b.style.cursor='pointer';
+    b.onclick=async()=>{try{const p=await DeviceOrientationEvent.requestPermission();
+      if(p==='granted'){ringActive=true;b.className='active';b.textContent='💍 已连接';b.style.cursor='default';b.onclick=null;
+        window.addEventListener('deviceorientation',handleRing);}
+    }catch(e){b.textContent='💍 不支持'}};
+  }else{ringActive=true;b.className='active';b.textContent='💍 已连接';
+    window.addEventListener('deviceorientation',handleRing);}
+}
+function handleRing(e){
+  if(!ringActive)return;ringFrame++;if(ringFrame%8!==0)return;
+  const beta=e.beta||0;if(ringPrevBeta===null){ringPrevBeta=beta;ringPrevGamma=e.gamma||0;return;}
+  const dBeta=Math.abs(beta-ringPrevBeta),dGamma=Math.abs((e.gamma||0)-ringPrevGamma);
+  ringPrevBeta=beta;ringPrevGamma=e.gamma||0;
+  if(dBeta>5||dGamma>5||dBeta>20||dGamma>20){
+    // Tilt up → jump (high targetY), tilt down → crouch (low targetY)
+    targetY=groundY-30-beta*1.5; // beta positive = tilt back = jump up
+  }
+}
+
+// ==================== SMART CANE (DeviceMotion) ====================
+let caneActive=false,caneFrame=0,caneLastAccel={x:0,y:0,z:0};
+function setupCane(){
+  if(typeof DeviceMotionEvent==='undefined')return;
+  const b=document.getElementById('cane-status');
+  if(typeof DeviceMotionEvent.requestPermission==='function'){
+    b.style.display='flex';b.textContent='🦯 点击启用';b.style.cursor='pointer';
+    b.onclick=async()=>{try{const p=await DeviceMotionEvent.requestPermission();
+      if(p==='granted'){caneActive=true;b.className='active';b.textContent='🦯 已连接';b.style.cursor='default';b.onclick=null;
+        window.addEventListener('devicemotion',handleCane);}
+    }catch(e){b.textContent='🦯 不支持'}};
+  }else{caneActive=true;b.className='active';b.textContent='🦯 已连接';
+    window.addEventListener('devicemotion',handleCane);}
+}
+function handleCane(e){
+  if(!caneActive)return;caneFrame++;if(caneFrame%6!==0)return;
+  const a=e.accelerationIncludingGravity||e.acceleration||{x:0,y:0,z:0};
+  const ax=a.x||0,ay=a.y||0,az=a.z||0;
+  const dax=Math.abs(ax-caneLastAccel.x),day=Math.abs(ay-caneLastAccel.y),daz=Math.abs(az-caneLastAccel.z);
+  caneLastAccel={x:ax,y:ay,z:az};
+  if(dax>8||day>8||daz>8){sprintTimer=1.5;} // shake → sprint boost
+}
+
+// ==================== VOICE COMMANDS (Glasses 👓) ====================
+let voiceActive=false,voiceFreq=0,voiceFreqTimer=0,recognition=null;
+function isGlassesMode(){const w=window.innerWidth,h=window.innerHeight;return(w<=420&&h<=340)||(w<=340&&h<=420)}
+function updateVoiceDot(){const d=document.getElementById('voice-dot');if(voiceActive)d.classList.add('active');else d.classList.remove('active')}
+function handleVoiceCommand(text){
+  if(/高|跳|up|jump/i.test(text)){voiceFreq=800;voiceFreqTimer=.6}
+  else if(/低|蹲|down|crouch/i.test(text)){voiceFreq=0;voiceFreqTimer=.6}
+  else if(/冲|快|sprint|dash|boost/i.test(text)){sprintTimer=Math.max(sprintTimer,.8)}
+  else if(/停|stop|pause/i.test(text)){voiceFreq=0;voiceFreqTimer=2;speed=Math.max(0,speed-5)}
+  updateVoiceDot()
+}
+function setupVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
+  recognition=new SR();recognition.lang='zh-CN';recognition.continuous=true;recognition.interimResults=false;
+  recognition.onresult=function(e){for(let i=e.resultIndex;i<e.results.length;i++)handleVoiceCommand(e.results[i][0].transcript.trim().toLowerCase())};
+  recognition.onerror=function(e){if(e.error==='not-allowed'){voiceActive=false;updateVoiceDot()}};
+  recognition.onend=function(){if(voiceActive)try{recognition.start()}catch(e){}};
+  try{recognition.start();voiceActive=true;updateVoiceDot()}catch(e){}
+}
+if(isGlassesMode())setupVoice(); // auto-detect glasses
+
+// Override getPitch to inject voice frequency
+const origGetPitch=getPitch;
+getPitch=function(){if(voiceFreqTimer>0)return voiceFreq;if(!analyser)return 0;return origGetPitch()};
+
+// Add sprint boost to game loop
+const origLoop=loop;
+loop=function(now){
+  if(gameState!=="playing")return;
+  const dt=Math.min((now-lastTime)/1000,.1);
+  if(sprintTimer>0){sprintTimer-=dt;speed=Math.max(speed,9);}
+  if(voiceFreqTimer>0)voiceFreqTimer-=dt;
+  origLoop(now);
+};
+
+setupRing();setupCane();
+</script>
+</body>
+</html>

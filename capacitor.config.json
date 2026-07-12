@@ -1,0 +1,1 @@
+{"appId":"com.whistle.runner","appName":"听歌跑酷","webDir":"www","ios":{"contentInset":"automatic"},"android":{"allowMixedContent":true},"plugins":{"StatusBar":{"style":"DARK","backgroundColor":"#1a0a2a"}}}

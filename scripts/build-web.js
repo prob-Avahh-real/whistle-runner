@@ -1,0 +1,1 @@
+const fs=require('fs');const p=require('path');const w=p.join(__dirname,'..','www');if(!fs.existsSync(p.join(w,'index.html'))){process.exit(1)}console.log('✅ ok')
